@@ -144,6 +144,5 @@ kafka-consumer-groups --bootstrap-server localhost:9092 --group Consumer --descr
 
 ```bash
 docker compose down -v
-docker compose rm
 ```
 
