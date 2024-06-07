@@ -1,6 +1,5 @@
 # You can modify the used version of Confluent Platform in ".env" by adapting variable CP_VERSION
 ---
-version: '3'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:${CP_VERSION}

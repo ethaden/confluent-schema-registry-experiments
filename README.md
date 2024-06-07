@@ -19,7 +19,7 @@ gradle wrapper
 First, start the docker environment:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 First, set the compatilibity level of our subject to "FORWARD_TRANSITIVE":
@@ -112,30 +112,31 @@ curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://
 Read messages via CLI tools, using standard console consumer:
 
 ```bash
-kafka-console-consumer --bootstrap-server localhost:9092 --topic topic --from-beginning
+docker compose exec kafka kafka-console-consumer --bootstrap-server kafka:9092 --topic topic --from-beginning
 ```
+
 Read messages via avro console consumer:
 
 ```bash
-kafka-avro-console-consumer --bootstrap-server localhost:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
+docker compose exec kafka kafka-avro-console-consumer --bootstrap-server kafka:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
 ```
 
 You might want to delete the topic to start fresh between tests:
 
 ```bash
-kafka-topics --bootstrap-server localhost:9092 --delete --topic topic
+docker compose exec kafka  kafka-topics --bootstrap-server kafka:9092 --delete --topic topic
 ```
 
 Alternatively, if you just want to consume the same messages again with the Java consumer, just reset the consumer groups offset:
 
 ```bash
-kafka-consumer-groups --bootstrap-server localhost:9092 --group Consumer --reset-offsets --to-earliest --topic topic --execute
+docker compose exec kafka kafka-consumer-groups --bootstrap-server kafka:9092 --group Consumer --reset-offsets --to-earliest --topic topic --execute
 ```
 
 You can view the offsets by running:
 
 ```bash
-kafka-consumer-groups --bootstrap-server localhost:9092 --group Consumer --describe
+docker compose exec kafka kafka-consumer-groups --bootstrap-server kafk:9092 --group Consumer --describe
 ```
 
 ## Experimenting
