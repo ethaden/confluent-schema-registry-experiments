@@ -1,0 +1,25 @@
+{
+    "namespace": "io.confluent.example.avro.cloudevents",
+    "type": "record",
+    "name": "CloudEventBase",
+    "fields": [
+    {
+        "name": "id",
+        "type": "string"
+    },
+    {
+        "name": "source",
+        "type": "string"
+    },
+    {
+        "name": "timestamp",
+        "type": "int",
+        "logicalType": "timestamp-millis"
+    },
+    {
+        "name": "data", 
+        "type": ["null", "ExampleEventRecord1", "ExampleEventRecord2"],
+        "default": null
+    }
+  ]
+}

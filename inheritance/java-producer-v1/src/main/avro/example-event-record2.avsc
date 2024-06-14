@@ -1,0 +1,26 @@
+{
+    "namespace": "io.confluent.example.avro.cloudevents",
+    "type": "record",
+    "name": "ExampleEventRecord2",
+    "fields": [
+    {
+        "name": "counter",
+        "type": "long"
+    },
+    {
+        "name": "log",
+        "type": "string"
+    },
+    {
+        "name": "severity",
+        "type": 
+        {
+            "type": "enum",
+            "name": "Severity",
+            "doc": "Severity of the log entry",
+            "symbols": ["DEBUG", "INFO", "WARN", "ERROR"]
+        },
+        "default": "WARN"
+    }
+    ]
+}
