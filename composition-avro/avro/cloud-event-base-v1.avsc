@@ -18,7 +18,7 @@
     },
     {
         "name": "data", 
-        "type": ["null", "ExampleEventRecord1", "ExampleEventRecord2"],
+        "type": ["null", "ExampleEventRecord1"],
         "default": null
     }
   ]
