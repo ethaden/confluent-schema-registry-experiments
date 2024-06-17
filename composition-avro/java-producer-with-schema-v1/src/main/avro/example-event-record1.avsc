@@ -1,15 +1,1 @@
-{
-    "namespace": "io.confluent.example.avro.cloudevents",
-    "type": "record",
-    "name": "ExampleEventRecord1",
-    "fields": [
-    {
-        "name": "counter",
-        "type": "long"
-    },
-    {
-        "name": "message",
-        "type": "string"
-    }
-  ]
-}
+../../../../avro/example-event-record1.avsc

@@ -12,7 +12,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("io.confluent.ethaden.examples.schemaregistry.ProduceV1")
+    mainClass.set("io.confluent.ethaden.examples.schemaregistry.ProducerWithSchemaV1")
 }
 
 avro {
