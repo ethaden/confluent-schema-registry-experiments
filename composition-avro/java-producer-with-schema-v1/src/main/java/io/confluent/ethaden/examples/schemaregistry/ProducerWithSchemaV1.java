@@ -50,8 +50,16 @@ public class ProducerWithSchemaV1 {
         try (KafkaProducer<String, CloudEventBase> producer = new KafkaProducer<>(avroSettings())) {
             for (int i=0; i < nb; i++) {
                 String key = Integer.toString(count);
+                ExampleEventRecord1 dataRecord = ExampleEventRecord1.newBuilder()
+                    .setCounter(i)
+                    .setMessage("Hello World")
+                    .build();
                 CloudEventBase value = CloudEventBase.newBuilder()
-                        .build();
+                    .setId(Integer.toString(i))
+                    .setSource(DRIVER_ID)
+                    .setTimestamp(0)
+                    .setData(dataRecord)
+                    .build();
                 ProducerRecord<String, CloudEventBase> producerRecord = new ProducerRecord<>(TOPIC, key, value);
                 LOGGER.info("Sending message {}", count);
                 producer.send(producerRecord, (RecordMetadata recordMetadata, Exception exception) -> {
