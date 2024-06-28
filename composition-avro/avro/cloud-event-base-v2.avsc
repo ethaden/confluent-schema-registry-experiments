@@ -13,8 +13,7 @@
     },
     {
         "name": "timestamp",
-        "type": "int",
-        "logicalType": "timestamp-millis"
+        "type": "int"
     },
     {
         "name": "data", 

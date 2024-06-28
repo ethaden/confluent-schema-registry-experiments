@@ -11,16 +11,18 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import io.confluent.example.avro.cloudevents.CloudEventBase;
 import io.confluent.example.avro.cloudevents.ExampleEventRecord1;
+import io.confluent.example.avro.cloudevents.ExampleEventRecord2;
+import io.confluent.example.avro.cloudevents.Severity;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class ProducerWithSchemaV1 {
+public class ProducerWithSchemaV2 {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String DRIVER_ID = "ProducerWithSchemaV1";
+    private static final String DRIVER_ID = "ProducerWithSchemaV2";
     private static final String TOPIC = "topic";
     private int count = 0;
 
@@ -44,25 +46,35 @@ public class ProducerWithSchemaV1 {
     }
     
     public static void main(String[] args) {
-        ProducerWithSchemaV1 produce = new ProducerWithSchemaV1();
+        ProducerWithSchemaV2 produce = new ProducerWithSchemaV2();
         produce.sendAvroProducer(10);
     }
 
     void sendAvroProducer(int nb) {
         LOGGER.info("Starting Arvo Producer");
         try (KafkaProducer<String, CloudEventBase> producer = new KafkaProducer<>(avroSettings())) {
+            // Produce both 
             for (int i=0; i < nb; i++) {
                 String key = Integer.toString(count);
-                ExampleEventRecord1 dataRecord = ExampleEventRecord1.newBuilder()
-                    .setCounter(i)
-                    .setMessage("Hello World")
-                    .build();
                 CloudEventBase value = CloudEventBase.newBuilder()
                     .setId(Integer.toString(i))
                     .setSource(DRIVER_ID)
                     .setTimestamp(0)
-                    .setData(dataRecord)
                     .build();
+                if (i%2==0) {
+                    ExampleEventRecord1 dataRecord = ExampleEventRecord1.newBuilder()
+                    .setCounter(i)
+                    .setMessage("Hello World")
+                        .build();
+                    value.put("data", dataRecord);
+                } else {
+                    ExampleEventRecord2 dataRecord = ExampleEventRecord2.newBuilder()
+                        .setCounter(i)
+                        .setLog("Logging \"Hello World\"")
+                        .setSeverity(Severity.INFO)
+                        .build();
+                    value.put("data", dataRecord);
+                }
                 ProducerRecord<String, CloudEventBase> producerRecord = new ProducerRecord<>(TOPIC, key, value);
                 LOGGER.info("Sending message {}", count);
                 producer.send(producerRecord, (RecordMetadata recordMetadata, Exception exception) -> {

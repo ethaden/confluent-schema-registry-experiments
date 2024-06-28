@@ -1,6 +1,6 @@
-# Experiments with Confluent Schema Registry
+= Experiments with Confluent Schema Registry
 
-## Building the code
+== Building the code
 
 Building the code using gradle:
 
@@ -14,7 +14,7 @@ Potentially, you might need to update gradle first:
 gradle wrapper
 ```
 
-## Running the code
+== Running the code
 
 First, start the docker environment:
 
@@ -30,57 +30,36 @@ curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
 http://localhost:8081/config/topic-value
 ```
 
-Register the schemas. Initially, there is exactly one type allowed for the `data` (except for the `null` value, of course) which is `io.confluent.example.avro.cloudevents.ExampleEventRecord1`.
-We need to register this schema first using the `RecordNameStrategy` (Note: in this clean environment we assume that the versions of the referenced schemas are always `1`.
-Please query and use the actual version of each referenced schema in a production environment):
+
+Register the schema:
 
 ```bash
-SCHEMA="$(sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' -e 's/[ \t]+//g' -e 's/\([\"]\)/\\\1/g' avro/example-event-record1.avsc)"
-JSON_DATA=$(printf "{\"schema\": \"${SCHEMA}\"}\n")
 curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data "${JSON_DATA}" \
-http://localhost:8081/subjects/io.confluent.example.avro.cloudevents.ExampleEventRecord1/versions
-```
-
-Then we can register the schema which refers to our `ExampleEventRecord1`, here using the `TopicNameStrategy`:
-
-```bash
-SCHEMA="$(sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' -e 's/[ \t]+//g' -e 's/\([\"]\)/\\\1/g' avro/cloud-event-base-v1.avsc)"
-VERSION_ExampleEventRecord1=1
-REFERENCES="[{\"name\": \"io.confluent.example.avro.cloudevents.ExampleEventRecord1\", \"subject\": \"io.confluent.example.avro.cloudevents.ExampleEventRecord1\", \"version\": ${VERSION_ExampleEventRecord1}}]"
-JSON_DATA=$(printf "{\"schema\": \"${SCHEMA}\", \"references\": ${REFERENCES}}\n")
-curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data "${JSON_DATA}" \
+--data '{"schema": "{\"namespace\": \"models.avro\", \"type\": \"record\", \"name\": \"SimpleValue\", \"fields\": [ {\"name\": \"theName\", \"type\": \"string\"}, {\"name\": \"theValue\", \"type\": \"string\"}]}"}' \
 http://localhost:8081/subjects/topic-value/versions
 ```
 
-Now upload the second example schema:
+Try to register an updated version of the schema, which is NOT forward compatible (should fail!):
 
 ```bash
-SCHEMA="$(sed -e ':a' -e 'N' -e '$!ba' -e 's/\n//g' -e 's/[ \t]+//g' -e 's/\([\"]\)/\\\1/g' avro/example-event-record2.avsc)"
-JSON_DATA=$(printf "{\"schema\": \"${SCHEMA}\"}\n")
 curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data "${JSON_DATA}" \
-http://localhost:8081/subjects/io.confluent.example.avro.cloudevents.ExampleEventRecord2/versions
+--data '{"schema": "{\"namespace\": \"models.avro\", \"type\": \"record\", \"name\": \"SimpleValue\", \"fields\": [ {\"name\": \"theName\", \"type\": \"string\"}]}"}]}"}' \
+http://localhost:8081/subjects/topic-value/versions
 ```
 
-You can get the list of all subjects in the schema registry like this:
+
+Register an updated version of the schema, which is forward compatible (thus should in theory allow an older consumer to read it). We just add a another value:
 
 ```bash
-curl http://localhost:8081/subjects
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data '{"schema": "{\"namespace\": \"models.avro\", \"type\": \"record\", \"name\": \"SimpleValue\", \"fields\": [ {\"name\": \"theName\", \"type\": \"string\"}, {\"name\": \"theValue\", \"type\": \"string\"}, {\"name\": \"theNewName\", \"type\": \"string\"}]}"}' \
+http://localhost:8081/subjects/topic-value/versions
 ```
-
-A (optionally pretty printed with `jq`) list of all schemas can be retrieved like this:
-
-```bash
-curl http://localhost:8081/schemas | jq
-```
-
 
 Run producer with gradle:
 
 ```bash
-./gradlew -p java-producer-with-schema-v1 run
+./gradlew -p java-producer run
 ```
 
 Run consumer with:
@@ -98,9 +77,9 @@ Run a consumer compiled with an older version of the avro schema to see if it ca
 Notice how the consumer will work, but does not output the extra field `theNewName` which was added when updating the schema.
 
 
-## Helpful tools
+== Helpful tools
 
-### Schema Registry
+=== Schema Registry
 
 
 Get all known versions:
@@ -128,7 +107,7 @@ curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://
 ```
 
 
-### CLI Consumer
+=== CLI Consumer
 
 Read messages via CLI tools, using standard console consumer:
 
@@ -136,10 +115,10 @@ Read messages via CLI tools, using standard console consumer:
 docker compose exec kafka kafka-console-consumer --bootstrap-server kafka:9092 --topic topic --from-beginning
 ```
 
-Read messages via avro console consumer (please install locally as the avro console conumser is not contained in the docker image):
+Read messages via avro console consumer:
 
 ```bash
-kafka-avro-console-consumer --bootstrap-server localhost:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
+docker compose exec kafka kafka-avro-console-consumer --bootstrap-server kafka:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
 ```
 
 You might want to delete the topic to start fresh between tests:
@@ -160,9 +139,9 @@ You can view the offsets by running:
 docker compose exec kafka kafka-consumer-groups --bootstrap-server kafk:9092 --group Consumer --describe
 ```
 
-## Experimenting
+== Experimenting
 
-## Shutting down, deleting containers
+== Shutting down, deleting containers
 
 ```bash
 docker compose down -v
