@@ -15,11 +15,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 
-public class Consumer {
+public class ConsumerSpecificTypesV1 {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String GROUP_ID = "Consumer";
+    private static final String GROUP_ID = "ConsumerSpecificTypesV1";
     private static final String KAFKA_TOPIC = "topic";
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
 
@@ -54,7 +54,7 @@ public class Consumer {
                         LOGGER.warn("Poll returned {} records", count);
                     }
                     for (var record : records) {
-                        LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
+                        LOGGER.warn("Fetch record key={} value={} (type=\"{}\")", record.key(), record.value(), record.value().getClass().getSimpleName());
                     }
                 } catch (RecordDeserializationException re) {
                     long offset = re.offset();
@@ -63,7 +63,7 @@ public class Consumer {
                     LOGGER.warn("Skipping offset={}", offset);
                     consumer.seek(re.topicPartition(), offset+1);
                 } catch (Exception e) {
-                    LOGGER.error("Failed to consumer", e);
+                    LOGGER.error("Failed to consume", e);
                 }
             }
         } finally {

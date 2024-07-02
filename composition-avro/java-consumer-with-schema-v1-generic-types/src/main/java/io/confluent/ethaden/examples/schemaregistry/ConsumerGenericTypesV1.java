@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.avro.generic.GenericData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,11 +16,11 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 
-public class Consumer {
+public class ConsumerGenericTypesV1 {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String GROUP_ID = "Consumer";
+    private static final String GROUP_ID = "ConsumerGenericTypesV1";
     private static final String KAFKA_TOPIC = "topic";
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
 
@@ -40,7 +41,7 @@ public class Consumer {
     public static void main(String[] args) {
         LOGGER.info("Starting consumer");
 
-        try (KafkaConsumer<String, CloudEventBase> consumer = new KafkaConsumer<>(settings())) {
+        try (KafkaConsumer<String, Object> consumer = new KafkaConsumer<>(settings())) {
             // Subscribe to our topic
             LOGGER.info("Subscribing to topic " + KAFKA_TOPIC);
             consumer.subscribe(List.of(KAFKA_TOPIC));
@@ -54,7 +55,7 @@ public class Consumer {
                         LOGGER.warn("Poll returned {} records", count);
                     }
                     for (var record : records) {
-                        LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
+                        LOGGER.warn("Fetch record key={} value={} (type=\"{}\")", record.key(), record.value(), record.value().getClass().getSimpleName());
                     }
                 } catch (RecordDeserializationException re) {
                     long offset = re.offset();
@@ -63,7 +64,7 @@ public class Consumer {
                     LOGGER.warn("Skipping offset={}", offset);
                     consumer.seek(re.topicPartition(), offset+1);
                 } catch (Exception e) {
-                    LOGGER.error("Failed to consumer", e);
+                    LOGGER.error("Failed to consume", e);
                 }
             }
         } finally {

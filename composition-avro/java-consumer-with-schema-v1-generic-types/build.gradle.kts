@@ -12,7 +12,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("io.confluent.ethaden.examples.schemaregistry.Consumer")
+    mainClass.set("io.confluent.ethaden.examples.schemaregistry.ConsumerGenericTypesV1")
 }
 
 avro {

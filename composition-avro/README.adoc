@@ -28,6 +28,8 @@ Create a topic:
 docker compose exec kafka  kafka-topics --bootstrap-server kafka:9092 --create --topic topic
 ```
 
+Please run the following commands inside of the sub folder `composition-avro`.
+
 Optionally, if you try to play with compatibility settings, start by setting the compatilibity level of our subject to "FORWARD_TRANSITIVE":
 
 ```bash
