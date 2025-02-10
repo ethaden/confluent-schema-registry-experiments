@@ -25,7 +25,7 @@ hs_err_pid*
 build/
 .gradle/
 .idea/*.xml
-*/bin
+compatibility/*/bin
 
 .metals
 .vscode
