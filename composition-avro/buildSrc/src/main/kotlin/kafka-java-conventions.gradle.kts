@@ -3,6 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation("org.apache.kafka:kafka-clients:7.1.1-ccs")
-    implementation("io.confluent:kafka-streams-avro-serde:7.1.1")
+    implementation("org.apache.kafka:kafka-clients:7.8.0-ce")
+    implementation("io.confluent:kafka-streams-avro-serde:7.8.0")
 }

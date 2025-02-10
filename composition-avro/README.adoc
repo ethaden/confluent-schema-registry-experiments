@@ -198,3 +198,18 @@ docker compose exec kafka kafka-consumer-groups --bootstrap-server kafk:9092 --g
 docker compose down -v
 ```
 
+== Development
+
+Check for dependency updates in each of the sub projects like this:
+
+```bash
+./gradlew -P java-producer dependencyUpdates -Drevision=release
+```
+
+Upgrade the dependency manually.
+
+For upgrading the gradle version, you can use this:
+
+```bash
+gradle wrapper --gradle-version <gradle version>
+```
