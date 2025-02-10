@@ -1,4 +1,4 @@
-package io.confluent.ethaden.examples.schemaregistry;
+package io.confluent.ethaden.examples.schemaregistry.schemamigration;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
