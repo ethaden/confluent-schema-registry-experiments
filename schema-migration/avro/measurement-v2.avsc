@@ -1,0 +1,15 @@
+{"namespace": "models.avro",
+  "type": "record",
+  "name": "Measurement",
+  "fields": [
+    {"name": "name", "type": "string"},
+    {"name": "value", "type": {
+        "type": "bytes",
+        "logicalType": "decimal",
+        "precision": 4,
+        "scale": 2
+      }
+    },
+    {"name": "unit", "type": "string"}
+  ]
+}
