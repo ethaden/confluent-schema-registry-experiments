@@ -27,19 +27,39 @@ Create a new topic:
 docker compose exec broker kafka-topics --bootstrap-server broker:9092 --topic measurements --create
 ```
 
+For convenience, a tiny shell script is provided which helps converting avro schema files to a format usable directly with `curl`.
+Convert the two schemas and save them to variables in your shell like this (tested with bash):
 
-Register the schema by running this command in the current subfolder:
+```shell
+export MEASUREMENT1_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v1.avsc)
+export MEASUREMENT2_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v2.avsc)
+```
+
+Register the first version of our schema by running:
 
 ```shell
 curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data '{"schema": "{\"namespace\": \"models.avro\", \"type\": \"record\", \"name\": \"SimpleValue\", \"fields\": [ {\"name\": \"theName\", \"type\": \"string\"}, {\"name\": \"theValue\", \"type\": \"string\"}]}"}' \
+--data "$MEASUREMENT1_SCHEMA" \
 http://localhost:8081/subjects/measurements-value/versions
 ```
+
+Show all schema versions:
+
+```bash
+curl schema-registry:8081/subjects/measurements-value/versions
+```
+
+Get schema with specific version (here: version 1):
+
+```bash
+curl -s schema-registry:8081/subjects/measurements-value/versions/1/schema | jq .
+```
+
 
 Run producer with gradle:
 
 ```shell
-./gradlew -p java-producer run
+./gradlew -p producer-schema-v1 run
 ```
 
 Run consumer with:

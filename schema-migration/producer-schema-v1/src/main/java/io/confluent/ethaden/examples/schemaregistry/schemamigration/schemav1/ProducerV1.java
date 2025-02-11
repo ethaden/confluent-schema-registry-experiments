@@ -39,6 +39,8 @@ public class ProducerV1 {
         settings.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         settings.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         settings.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
+        settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
+        settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
         settings.put(ProducerConfig.BATCH_SIZE_CONFIG, 1);
         return settings;
     }
