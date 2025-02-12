@@ -28,11 +28,11 @@ docker compose exec broker kafka-topics --bootstrap-server broker:9092 --topic m
 ```
 
 For convenience, a tiny shell script is provided which helps converting avro schema files to a format usable directly with `curl`.
-Convert the two schemas and save them to variables in your shell like this (tested with bash):
+Convert the two schemas and save them to variables in your shell like this (tested with bash). The first parameter of the script is the input file to read, the second parameter specifies the `application.major.version`, an advanced commercial feature of Schema Registry (please find more details https://docs.confluent.io/cloud/current/sr/fundamentals/data-contracts.html#application-major-versioning[here]):
 
 ```shell
-export MEASUREMENT1_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v1.avsc)
-export MEASUREMENT2_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v2.avsc)
+export MEASUREMENT1_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v1.avsc 1)
+export MEASUREMENT2_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v2.avsc 2)
 ```
 
 Register the first version of our schema by running:
@@ -45,13 +45,13 @@ http://localhost:8081/subjects/measurements-value/versions
 
 Show all schema versions:
 
-```bash
+```shell
 curl schema-registry:8081/subjects/measurements-value/versions
 ```
 
 Get schema with specific version (here: version 1):
 
-```bash
+```shell
 curl -s schema-registry:8081/subjects/measurements-value/versions/1/schema | jq .
 ```
 
@@ -105,6 +105,96 @@ Permanently delete a specific version (you need to soft delete first):
 ```shell
 curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/measurements-value/versions/1?permanent=true
 ```
+
+==== Commercial feature of Schema Registry: Application Major Versions
+Let's play a bit with compatibility checks and application major versions.
+
+First, we convert the two versions of our schema without using an application major version.
+
+```shell
+export TEST_SCHEMA1=$(./convert-avro-schema.sh avro/measurement-v1.avsc)
+export TEST_SCHEMA2=$(./convert-avro-schema.sh avro/measurement-v2.avsc)
+```
+
+We put them one by one into the schema registry using a subject for another topic value (the topic does not exist, but this doesn't matter):
+
+The first version of the schema:
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$TEST_SCHEMA1" \
+http://localhost:8081/subjects/testtopic-value/versions
+```
+
+And the second version:
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$TEST_SCHEMA2" \
+http://localhost:8081/subjects/testtopic-value/versions
+```
+
+The second command will raise an error because this version of the schema is not backward compatible to the first version! By default our schema registry enforces backward compatibility.
+
+Let's wipe the first schema:
+
+```shell
+curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/testtopic-value/versions/1
+curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/testtopic-value/versions/1?permanent=true
+```
+
+Check that it has been deleted:
+
+```shell
+curl -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/testtopic-value/versions
+```
+
+Now convert both schemas again, this time with an application major version (see the script for details or check the value of the environment variables):
+
+```shell
+export TEST_SCHEMA1=$(./convert-avro-schema.sh avro/measurement-v1.avsc 1)
+export TEST_SCHEMA2=$(./convert-avro-schema.sh avro/measurement-v2.avsc 2)
+```
+
+Upload the first version of the schema again:
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$TEST_SCHEMA1" \
+http://localhost:8081/subjects/testtopic-value/versions
+```
+
+Now upload the second version of the same schema, which contains a breaking change again:
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$TEST_SCHEMA2" \
+http://localhost:8081/subjects/testtopic-value/versions
+```
+
+It is still not working! The reason is that again the strict compatibility check prevents us from upload the schema with the breaking change.
+First, we need to configure the subject in schema registry properly:
+
+```shell
+curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data '{ "compatibilityGroup": "major_version" }' \
+http://localhost:8081/config/testtopic-value
+```
+
+You can check the current configuration like this:
+
+```shell
+curl http://localhost:8081/config/testtopic-value
+```
+
+Now the updated incompatible schema can be registered:
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$TEST_SCHEMA2" \
+http://localhost:8081/subjects/testtopic-value/versions
+```
+
 
 
 === CLI Consumer
