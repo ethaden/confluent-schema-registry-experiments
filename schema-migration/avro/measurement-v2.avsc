@@ -4,8 +4,8 @@
   "fields": [
     {"name": "name", "type": "string"},
     {"name": "value", "type": {
-        "type": "bytes",
-        "logicalType": "decimal",
+        "type": "string",
+        "logicalType": "fixedpointnumber",
         "precision": 4,
         "scale": 2
       }

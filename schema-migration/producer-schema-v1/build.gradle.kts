@@ -3,7 +3,7 @@ import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
 plugins {
     id("java-application-conventions")
     id("kafka-java-conventions")
-    id("com.github.davidmc24.gradle.plugin.avro") version "1.9.1"
+    id("com.github.davidmc24.gradle.plugin.avro")
     id("com.github.ben-manes.versions") version "0.52.0"
 }
 
@@ -11,7 +11,7 @@ val avroVersion = "1.12.0"
 
 dependencies {
     compileOnly("org.apache.avro:avro-tools:$avroVersion")
-//    implementation(project(":utilities"))
+    implementation(project(":avrofixedpointnumber"))
 }
 
 application {
@@ -20,6 +20,10 @@ application {
 
 avro {
     setCreateSetters(false)
+    //stringType("String")
+    //outputCharacterEncoding("UTF-8")
+    logicalTypeFactory("fixedpointnumber", "io.confluent.ethaden.examples.avro.fixedpointnumber.FixedPointNumberLogicalTypeFactory")
+    customConversion("io.confluent.ethaden.examples.avro.fixedpointnumber.FixedPointNumberConversion")
 }
 
 // Used by dependency update plugin

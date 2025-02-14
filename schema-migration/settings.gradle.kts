@@ -1,3 +1,3 @@
 rootProject.name = "kafka-schema-registry-experiments-schema-migrations"
 
-include("producer-schema-v1", "consumer-schema-v1", "producer-schema-v2", "consumer-schema-v2")
+include("avrofixedpointnumber", "producer-schema-v1", "consumer-schema-v1", "producer-schema-v2", "consumer-schema-v2")

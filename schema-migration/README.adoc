@@ -28,11 +28,20 @@ docker compose exec broker kafka-topics --bootstrap-server broker:9092 --topic m
 ```
 
 For convenience, a tiny shell script is provided which helps converting avro schema files to a format usable directly with `curl`.
-Convert the two schemas and save them to variables in your shell like this (tested with bash). The first parameter of the script is the input file to read, the second parameter specifies the `application.major.version`, an advanced commercial feature of Schema Registry (please find more details https://docs.confluent.io/cloud/current/sr/fundamentals/data-contracts.html#application-major-versioning[here]):
+Convert the two schemas and save them to variables in your shell like this (tested with bash).
+The first parameter of the script is the input file to read, the second parameter specifies the `application.major.version`, an advanced commercial feature of Schema Registry (please find more details https://docs.confluent.io/cloud/current/sr/fundamentals/data-contracts.html#application-major-versioning[here]):
 
 ```shell
 export MEASUREMENT1_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v1.avsc 1)
 export MEASUREMENT2_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v2.avsc 2)
+```
+
+Configure the subject for advanced application version handling:
+
+```shell
+curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data '{ "compatibilityGroup": "major_version" }' \
+http://localhost:8081/config/measurements-value
 ```
 
 Register the first version of our schema by running:
