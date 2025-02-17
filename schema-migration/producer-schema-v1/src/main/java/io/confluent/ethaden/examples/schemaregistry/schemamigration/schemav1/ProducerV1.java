@@ -1,29 +1,18 @@
 package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav1;
 
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
-import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
-import models.avro.Measurement;
-import org.apache.avro.io.BinaryEncoder;
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumWriter;
+import java.lang.invoke.MethodHandles;
+import java.util.Properties;
+import java.util.Random;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Properties;
-import java.util.Random;
-import java.util.random.RandomGenerator;
+import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
+import models.avro.Measurement;
 
 public class ProducerV1 {
 
@@ -41,6 +30,10 @@ public class ProducerV1 {
         settings.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
+        // Always use the latest version of the schema from Schema Registry
+        settings.put("use.latest.version", true);
+        // But use only schema versions where the metadata field "application.major.version" is equal to "1"
+        settings.put("use.latest.with.metadata", "application.major.version=1");
         settings.put(ProducerConfig.BATCH_SIZE_CONFIG, 1);
         return settings;
     }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
@@ -43,6 +44,10 @@ public class ProducerV2 {
         settings.put(KafkaAvroSerializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
+        // Always use the latest version of the schema from Schema Registry
+        settings.put("use.latest.version", true);
+        // But use only schema versions where the metadata field "application.major.version" is equal to "2"
+        settings.put("use.latest.with.metadata", "application.major.version=2");
         settings.put(ProducerConfig.BATCH_SIZE_CONFIG, 1);
         return settings;
     }
@@ -61,15 +66,16 @@ public class ProducerV2 {
     void sendAvroProducer(int nb) {
         LOGGER.info("Starting Arvo Producer");
         Random rand = new Random();
-        MathContext mathContext = new MathContext(5);
         try (KafkaProducer<String, Measurement> producer = new KafkaProducer<>(avroSettings())) {
             for (int i=0; i < nb; i++) {
                 String key = Integer.toString(count);
                 
-                BigDecimal randValue = new BigDecimal(rand.nextDouble(100), mathContext);
+                BigDecimal randValue = new BigDecimal(rand.nextDouble(100));
+                BigDecimal valueWithTwoDecimals = randValue.setScale(2, RoundingMode.HALF_UP);
+                System.out.println("Sending decimal "+valueWithTwoDecimals);
                 Measurement value = Measurement.newBuilder()
                         .setName("This is message " + key)
-                        .setValue(randValue)
+                        .setValue(valueWithTwoDecimals)
                         .setUnit("°C")
                         .build();
                 ProducerRecord<String, Measurement> producerRecord = new ProducerRecord<>(TOPIC, key, value);

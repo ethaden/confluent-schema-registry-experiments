@@ -25,7 +25,7 @@ docker compose up -d
 Create a topic:
 
 ```bash
-docker compose exec kafka  kafka-topics --bootstrap-server kafka:9092 --create --topic topic
+docker compose exec broker  kafka-topics --bootstrap-server broker:9092 --create --topic topic
 ```
 
 Please run the following commands inside of the sub folder `composition-avro`.
@@ -165,31 +165,31 @@ curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://
 Read messages via CLI tools, using standard console consumer:
 
 ```bash
-docker compose exec kafka kafka-console-consumer --bootstrap-server kafka:9092 --topic topic --from-beginning
+docker compose exec broker kafka-console-consumer --bootstrap-server broker:9092 --topic topic --from-beginning
 ```
 
-Read messages via avro console consumer (please install locally as the avro console conumser is not contained in the docker image):
+Read messages via avro console consumer:
 
 ```bash
-kafka-avro-console-consumer --bootstrap-server localhost:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic topic --from-beginning
 ```
 
 You might want to delete the topic to start fresh between tests:
 
 ```bash
-docker compose exec kafka  kafka-topics --bootstrap-server kafka:9092 --delete --topic topic
+docker compose exec broker  kafka-topics --bootstrap-server broker:9092 --delete --topic topic
 ```
 
 Alternatively, if you just want to consume the same messages again with the Java consumer, just reset the consumer groups offset:
 
 ```bash
-docker compose exec kafka kafka-consumer-groups --bootstrap-server kafka:9092 --group Consumer --reset-offsets --to-earliest --topic topic --execute
+docker compose exec broker kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --reset-offsets --to-earliest --topic topic --execute
 ```
 
 You can view the offsets by running:
 
 ```bash
-docker compose exec kafka kafka-consumer-groups --bootstrap-server kafk:9092 --group Consumer --describe
+docker compose exec broker kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --describe
 ```
 
 === Shutting down, deleting containers

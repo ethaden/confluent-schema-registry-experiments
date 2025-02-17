@@ -15,18 +15,18 @@ import java.lang.invoke.MethodHandles;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
+import java.util.Random;
 
 public class ConsumerV1 {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String GROUP_ID = "Consumer";
     private static final String KAFKA_TOPIC = "measurements";
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
 
-    private static Properties settings() {
+    private static Properties settings(String groupId) {
         final Properties settings = new Properties();
-        settings.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        settings.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         settings.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         settings.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         settings.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 100);
@@ -40,9 +40,10 @@ public class ConsumerV1 {
     }
 
     public static void main(String[] args) {
-        LOGGER.info("Starting consumer");
-
-        try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings())) {
+        Random ran = new Random();
+        String groupId = new String("Consumer-"+ran.nextInt(100000));
+        LOGGER.info("Starting consumer with schema v1: "+groupId);
+        try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings(groupId))) {
             // Subscribe to our topic
             LOGGER.info("Subscribing to topic " + KAFKA_TOPIC);
             consumer.subscribe(List.of(KAFKA_TOPIC));

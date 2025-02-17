@@ -27,22 +27,35 @@ Create a new topic:
 docker compose exec broker kafka-topics --bootstrap-server broker:9092 --topic measurements --create
 ```
 
-For convenience, a tiny shell script is provided which helps converting avro schema files to a format usable directly with `curl`.
-Convert the two schemas and save them to variables in your shell like this (tested with bash).
+For this demo, we use the https://jqlang.org/[`jq`] command for preparing the payload to be sent to the Schema Registry for uploading the schema.
 The first parameter of the script is the input file to read, the second parameter specifies the `application.major.version`, an advanced commercial feature of Schema Registry (please find more details https://docs.confluent.io/cloud/current/sr/fundamentals/data-contracts.html#application-major-versioning[here]):
 
 ```shell
-export MEASUREMENT1_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v1.avsc 1)
-export MEASUREMENT2_SCHEMA=$(./convert-avro-schema.sh avro/measurement-v2.avsc 2)
+export MEASUREMENT1_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "1" } }
+}
+eof
+)
+export MEASUREMENT1_SCHEMA=$(jq -n --rawfile schema avro/measurement-v1.avsc "${MEASUREMENT1_SCHEMA_RAW}")
+export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "2" } }
+}
+eof
+)
+export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc "${MEASUREMENT2_SCHEMA_RAW}")
 ```
 
 Configure the subject for advanced application version handling:
 
 ```shell
 curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data '{ "compatibilityGroup": "major_version" }' \
+--data '{ "compatibilityGroup": "application.major.version" }' \
 http://localhost:8081/config/measurements-value
 ```
+
+Note that the `compatibilityGroup` setting for Schema Registry is just a string which is then looked up in the metadata of the schemas. In some examples, the value "major_version" is used instead of `application.major.version`. As long as this is used concisely everywhere, this is absolutely possible. For simplicity, I would recommend using `application.major.version` and this is what is used in this example, too.
 
 Register the first version of our schema by running:
 
@@ -58,12 +71,26 @@ Show all schema versions:
 curl schema-registry:8081/subjects/measurements-value/versions
 ```
 
-Get schema with specific version (here: version 1):
+Just for validation: Get schema with specific version (here: version 1):
 
 ```shell
 curl -s schema-registry:8081/subjects/measurements-value/versions/1/schema | jq .
 ```
 
+Note that you do not see the metadata of the schema with this query.
+Particularly, you won't be able to see our `application.major.version` in the result.
+In order to query also the metadata along with the schema (but only the latest), use this endpoint instead:
+
+```shell
+curl -s schema-registry:8081/subjects/measurements-value/metadata | jq .
+```
+
+If you want to query a specific major version schema, use this query
+(here, we want to find the latest schema registered for the older version of the application):
+
+```shell
+curl -s schema-registry:8081/subjects/measurements-value/metadata?key="application.major.version"\&value="1" | jq .
+```
 
 Run producer with gradle:
 
@@ -71,20 +98,76 @@ Run producer with gradle:
 ./gradlew -p producer-schema-v1 run
 ```
 
-Run consumer with:
+Run consumer (for this demo, we use random group IDs each time the consumers are started):
 
 ```shell
-./gradlew -p java-consumer run
+./gradlew -p consumer-schema-v1 run
 ```
 
-Run a consumer compiled with an older version of the avro schema to see if it can successfully consume the messages produced with the newer schema:
+Now register the updated version of the schema which is NOT compatible in any way. This should work now as we provide a new application major version.
 
 ```shell
-./gradlew -p java-consumer-old-avro run
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$MEASUREMENT2_SCHEMA" \
+http://localhost:8081/subjects/measurements-value/versions
 ```
 
-Now register an updated version of the schema which is NOT compatible in any way.
+Run a producer using the new schema, this time using our new custom Avro logical type `fixedpointnumber`:
 
+```shell
+./gradlew -p producer-schema-v2 run
+```
+
+Use the console consumer to show the values:
+
+```shell
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://schema-registry:8081 --topic measurements --from-beginning
+```
+
+As you can see, the primitive type used to encode the decimal number is `string`. Thus, we eliminated issues with the precision of the values, rouding, etc. However, this data type requires more more and cannot be used without conversions.
+
+Now the topic should contain a mix of messages with Version 1 and Version 2 of the schema.
+Try to consume the again with both the consumer knowing only Version 1 of the schema and the consumer knowing Version 2:
+
+```shell
+./gradlew -p consumer-schema-v1 run
+```
+
+With the newer version of the consumer:
+
+```shell
+./gradlew -p consumer-schema-v2 run
+```
+
+Both consumer will only be able to deserialize the messages which are in the format they know and show error messages for all others.
+
+Let's configure a Schema Migration Rule. Note that the dependency `io.confluent:kafka-schema-rules` has been added to all Kafka clients already in the build environment. Migration rules are written in JSonata and uploaded to Schema Registry. Thus, we need to extend the existing schemas.
+
+```shell
+export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc <<-eof
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "2" } }
+}
+eof
+)
+```
+
+```shell
+export MEASUREMENT1_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "1" } }
+}
+eof
+)
+export MEASUREMENT1_SCHEMA=$(jq -n --rawfile schema avro/measurement-v1.avsc "${MEASUREMENT1_SCHEMA_RAW}")
+export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "2" } }
+}
+eof
+)
+export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc "${MEASUREMENT2_SCHEMA_RAW}")
+```
 
 == Helpful tools
 
@@ -121,8 +204,8 @@ Let's play a bit with compatibility checks and application major versions.
 First, we convert the two versions of our schema without using an application major version.
 
 ```shell
-export TEST_SCHEMA1=$(./convert-avro-schema.sh avro/measurement-v1.avsc)
-export TEST_SCHEMA2=$(./convert-avro-schema.sh avro/measurement-v2.avsc)
+export MEASUREMENT1_SCHEMA=$(jq -n --rawfile schema avro/measurement-v1.avsc '{schema: $schema}')
+export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc '{schema: $schema}')
 ```
 
 We put them one by one into the schema registry using a subject for another topic value (the topic does not exist, but this doesn't matter):
@@ -186,7 +269,7 @@ First, we need to configure the subject in schema registry properly:
 
 ```shell
 curl -X PUT -H "Content-Type: application/vnd.schemaregistry.v1+json" \
---data '{ "compatibilityGroup": "major_version" }' \
+--data '{ "compatibilityGroup": "application.major.version" }' \
 http://localhost:8081/config/testtopic-value
 ```
 
@@ -211,31 +294,31 @@ http://localhost:8081/subjects/testtopic-value/versions
 Read messages via CLI tools, using standard console consumer:
 
 ```shell
-docker compose exec kafka kafka-console-consumer --bootstrap-server broker:9092 --topic measurements --from-beginning
+docker compose exec broker kafka-console-consumer --bootstrap-server broker:9092 --topic measurements --from-beginning
 ```
 
 Read messages via avro console consumer:
 
 ```shell
-docker compose exec kafka kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning
 ```
 
 You might want to delete the topic to start fresh between tests:
 
 ```shell
-docker compose exec kafka  kafka-topics --bootstrap-server broker:9092 --delete --topic measurements
+docker compose exec broker  kafka-topics --bootstrap-server broker:9092 --delete --topic measurements
 ```
 
 Alternatively, if you just want to consume the same messages again with the Java consumer, just reset the consumer groups offset:
 
 ```shell
-docker compose exec kafka kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --reset-offsets --to-earliest --topic measurements --execute
+docker compose exec broker kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --reset-offsets --to-earliest --topic measurements --execute
 ```
 
 You can view the offsets by running:
 
 ```shell
-docker compose exec kafka kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --describe
+docker compose exec broker kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --describe
 ```
 
 == Experimenting
@@ -251,7 +334,7 @@ docker compose down -v
 Check for dependency updates in each of the sub projects like this:
 
 ```shell
-./gradlew -P java-producer dependencyUpdates -Drevision=release
+./gradlew -P producer dependencyUpdates -Drevision=release
 ```
 
 Upgrade the dependency manually.

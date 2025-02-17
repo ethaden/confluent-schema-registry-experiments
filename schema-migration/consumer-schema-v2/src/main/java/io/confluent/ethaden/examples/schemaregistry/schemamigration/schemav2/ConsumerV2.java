@@ -1,32 +1,31 @@
 package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav2;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
-import models.avro.Measurement;
+import java.lang.invoke.MethodHandles;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
+import java.util.Random;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.lang.invoke.MethodHandles;
-import java.time.Duration;
-import java.util.List;
-import java.util.Properties;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
+import models.avro.Measurement;
 
 public class ConsumerV2 {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    private static final String GROUP_ID = "Consumer";
     private static final String KAFKA_TOPIC = "measurements";
     private static final Duration POLL_TIMEOUT = Duration.ofMillis(100);
 
-    private static Properties settings() {
+    private static Properties settings(String groupId) {
         final Properties settings = new Properties();
-        settings.put(ConsumerConfig.GROUP_ID_CONFIG, GROUP_ID);
+        settings.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         settings.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         settings.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         settings.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 100);
@@ -36,13 +35,18 @@ public class ConsumerV2 {
         settings.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
+        // Always use the latest version of the schema from Schema Registry
+        settings.put("use.latest.version", true);
+        // But use only schema versions where the metadata field "application.major.version" is equal to "2"
+        settings.put("use.latest.with.metadata", "application.major.version=2");
         return settings;
     }
 
     public static void main(String[] args) {
-        LOGGER.info("Starting consumer");
-
-        try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings())) {
+        Random ran = new Random();
+        String groupId = new String("Consumer-"+ran.nextInt(100000));
+        LOGGER.info("Starting consumer with schema v2: "+groupId);
+        try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings(groupId))) {
             // Subscribe to our topic
             LOGGER.info("Subscribing to topic " + KAFKA_TOPIC);
             consumer.subscribe(List.of(KAFKA_TOPIC));
