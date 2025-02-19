@@ -141,33 +141,70 @@ With the newer version of the consumer:
 
 Both consumer will only be able to deserialize the messages which are in the format they know and show error messages for all others.
 
-Let's configure a Schema Migration Rule. Note that the dependency `io.confluent:kafka-schema-rules` has been added to all Kafka clients already in the build environment. Migration rules are written in JSonata and uploaded to Schema Registry. Thus, we need to extend the existing schemas.
+=== Schema Migration Rules
 
-```shell
-export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc <<-eof
-{schema: $schema,
-"metadata": { "properties": { "application.major.version": "2" } }
+Let's configure Schema Migration Rule.s Note that the dependency `io.confluent:kafka-schema-rules` has been added to all Kafka clients already in the build environment. Migration rules are written in JSonata and uploaded to Schema Registry. Thus, we need to extend the existing schemas.
+
+The following JSOnata string takes inputs such as the following (you can use https://try.jsonata.org/ for testing):
+
+```json
+{
+  "Measurement": {
+    "name": "Temperature",
+    "value": 22.53,
+    "unit": "°C"
+  }
 }
-eof
-)
 ```
 
+Upgrading the value from float/double to string can be done with this expression (works only for flat data strcutures as the example above):
+
+```json
+$merge([$, {'value': $string(Measurement.value)}])
+```
+
+Downgrading the value from string to float would be done by this expression:
+
+```json
+$merge([$, {'value': $number(Measurement.value)}])
+```
+
+
+Let's assemble the migration rules now. They look like this:
+
+
 ```shell
-export MEASUREMENT1_SCHEMA_RAW=$(cat << 'eof'
-{schema: $schema,
-"metadata": { "properties": { "application.major.version": "1" } }
-}
-eof
-)
-export MEASUREMENT1_SCHEMA=$(jq -n --rawfile schema avro/measurement-v1.avsc "${MEASUREMENT1_SCHEMA_RAW}")
 export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
-{schema: $schema,
-"metadata": { "properties": { "application.major.version": "2" } }
+{   schema: $schema,
+    "metadata": { "properties": { "application.major.version": "2" } },
+    "migrationRules": [
+        {
+        "name": "upgradeFloatValueToString",
+        "kind": "TRANSFORM",
+        "type": "JSONATA",
+        "mode": "UPGRADE",
+        "expr": "$merge([$, {'value': $string(Measurement.value)}])"
+        },
+        {
+        "name": "downgradeStringValueToFloat",
+        "kind": "TRANSFORM",
+        "type": "JSONATA",
+        "mode": "DOWNGRADE",
+        "expr": "$merge([$, {'value': $number(Measurement.value)}])"
+        }
+    ]
 }
 eof
 )
 export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc "${MEASUREMENT2_SCHEMA_RAW}")
 ```
+
+```shell
+curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+--data "$MEASUREMENT2_SCHEMA" \
+http://localhost:8081/subjects/measurements-value/versions
+```
+
 
 == Helpful tools
 
@@ -198,7 +235,8 @@ Permanently delete a specific version (you need to soft delete first):
 curl -X DELETE -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/measurements-value/versions/1?permanent=true
 ```
 
-==== Commercial feature of Schema Registry: Application Major Versions
+
+==== Playground: Commercial feature of Schema Registry: Application Major Versions
 Let's play a bit with compatibility checks and application major versions.
 
 First, we convert the two versions of our schema without using an application major version.
@@ -241,11 +279,23 @@ Check that it has been deleted:
 curl -H "Content-Type: application/vnd.schemaregistry.v1+json" http://localhost:8081/subjects/testtopic-value/versions
 ```
 
-Now convert both schemas again, this time with an application major version (see the script for details or check the value of the environment variables):
+Now convert both schemas again, this time with an application major version:
 
 ```shell
-export TEST_SCHEMA1=$(./convert-avro-schema.sh avro/measurement-v1.avsc 1)
-export TEST_SCHEMA2=$(./convert-avro-schema.sh avro/measurement-v2.avsc 2)
+export MEASUREMENT1_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "1" } }
+}
+eof
+)
+export MEASUREMENT1_SCHEMA=$(jq -n --rawfile schema avro/measurement-v1.avsc "${MEASUREMENT1_SCHEMA_RAW}")
+export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
+{schema: $schema,
+"metadata": { "properties": { "application.major.version": "2" } }
+}
+eof
+)
+export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc "${MEASUREMENT2_SCHEMA_RAW}")
 ```
 
 Upload the first version of the schema again:
@@ -287,8 +337,6 @@ curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
 http://localhost:8081/subjects/testtopic-value/versions
 ```
 
-
-
 === CLI Consumer
 
 Read messages via CLI tools, using standard console consumer:
@@ -321,7 +369,34 @@ You can view the offsets by running:
 docker compose exec broker kafka-consumer-groups --bootstrap-server broker:9092 --group Consumer --describe
 ```
 
-== Experimenting
+== Background: Migration Rules with JSonata
+
+Just in case you use hierarchical data structures, here is an example where we do the conversion used above (casting the `value` field):
+
+```json
+{
+  "Measurement": {
+    "name": "Temperature",
+    "location": "My location",
+    "value": 22.53,
+    "unit": "°C"
+  }
+}
+```
+
+It will output all values as is (that's what the `$` is for), except for the `value` field inside of `Measurement` which is casted to string first:
+
+```json
+$merge([$, {'Measurement': $merge([Measurement, {'value': $string(Measurement.value)}])}])
+```
+
+This expression will be used for `upgrading` existing messages in a topic.
+Downgrading (e.g. to support older consumers), can be done with the analog expression:
+
+```json
+$merge([$, {'Measurement': $merge([Measurement, {'value': $number(Measurement.value)}])}])
+```
+
 
 == Shutting down, deleting containers
 
