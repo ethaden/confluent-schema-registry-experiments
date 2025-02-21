@@ -39,6 +39,9 @@ public class ConsumerV2 {
         settings.put("use.latest.version", true);
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
         settings.put("use.latest.with.metadata", "application.major.version=2");
+        // Use the JSONata executor
+        settings.put("rule.executors", "executor1");
+        settings.put("rule.executors.executor1.class", "io.confluent.kafka.schemaregistry.rules.jsonata.JsonataExecutor");
         return settings;
     }
 

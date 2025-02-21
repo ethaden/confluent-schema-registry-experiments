@@ -141,6 +141,8 @@ With the newer version of the consumer:
 
 Both consumer will only be able to deserialize the messages which are in the format they know and show error messages for all others.
 
+
+
 === Schema Migration Rules
 
 Let's configure Schema Migration Rule.s Note that the dependency `io.confluent:kafka-schema-rules` has been added to all Kafka clients already in the build environment. Migration rules are written in JSonata and uploaded to Schema Registry. Thus, we need to extend the existing schemas.
@@ -177,22 +179,26 @@ Let's assemble the migration rules now. They look like this:
 export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
 {   schema: $schema,
     "metadata": { "properties": { "application.major.version": "2" } },
-    "migrationRules": [
-        {
-        "name": "upgradeFloatValueToString",
-        "kind": "TRANSFORM",
-        "type": "JSONATA",
-        "mode": "UPGRADE",
-        "expr": "$merge([$, {'value': $string(Measurement.value)}])"
-        },
-        {
-        "name": "downgradeStringValueToFloat",
-        "kind": "TRANSFORM",
-        "type": "JSONATA",
-        "mode": "DOWNGRADE",
-        "expr": "$merge([$, {'value': $number(Measurement.value)}])"
-        }
-    ]
+    "ruleSet": {
+        "migrationRules": [
+            {
+            "name": "upgradeFloatValueToString",
+            "kind": "TRANSFORM",
+            "type": "JSONATA",
+            "mode": "UPGRADE",
+            "expr": "$merge([$, {'value': $string(Measurement.value)}])",
+            "disabled": false
+            },
+            {
+            "name": "downgradeStringValueToFloat",
+            "kind": "TRANSFORM",
+            "type": "JSONATA",
+            "mode": "DOWNGRADE",
+            "expr": "$merge([$, {'value': $number(Measurement.value)}])",
+            "disabled": false
+            }
+        ]
+    }
 }
 eof
 )
@@ -203,6 +209,12 @@ export MEASUREMENT2_SCHEMA=$(jq -n --rawfile schema avro/measurement-v2.avsc "${
 curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
 --data "$MEASUREMENT2_SCHEMA" \
 http://localhost:8081/subjects/measurements-value/versions
+```
+
+Check if consumption works by restricting `kafka-avro-console-consumer` to the second application version:
+
+```shell
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=2 --property rule.executors=executor1 --property rule.executors.executor1.class=io.confluent.kafka.schemaregistry.rules.jsonata.JsonataExecutor
 ```
 
 

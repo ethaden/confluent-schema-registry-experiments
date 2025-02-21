@@ -36,6 +36,15 @@ public class ConsumerV1 {
         settings.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
+        // Always use the latest version of the schema from Schema Registry
+        settings.put("use.latest.version", true);
+        // But use only schema versions where the metadata field "application.major.version" is equal to "2"
+        settings.put("use.latest.with.metadata", "application.major.version=2");
+        // Use the JSONata executor
+
+        settings.put("rule.executors", "executor1");
+        settings.put("rule.executors.executor1.class", "io.confluent.kafka.schemaregistry.rules.jsonata.JsonataExecutor");
+
         return settings;
     }
 
