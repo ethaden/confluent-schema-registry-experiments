@@ -11,7 +11,9 @@ val avroVersion = "1.12.0"
 
 dependencies {
     compileOnly("org.apache.avro:avro-tools:$avroVersion")
-    implementation(project(":avrofixedpointnumber"))
+    implementation("org.apache.kafka:kafka-clients:7.9.0-ce")
+    implementation("io.confluent:kafka-streams-avro-serde:7.9.0")
+    runtimeOnly("io.confluent:kafka-schema-rules:7.9.0")
 }
 
 application {
@@ -20,10 +22,6 @@ application {
 
 avro {
     setCreateSetters(false)
-    //stringType("String")
-    //outputCharacterEncoding("UTF-8")
-    logicalTypeFactory("fixedpointnumber", "io.confluent.ethaden.examples.avro.fixedpointnumber.FixedPointNumberLogicalTypeFactory")
-    customConversion("io.confluent.ethaden.examples.avro.fixedpointnumber.FixedPointNumberConversion")
 }
 
 // Used by dependency update plugin

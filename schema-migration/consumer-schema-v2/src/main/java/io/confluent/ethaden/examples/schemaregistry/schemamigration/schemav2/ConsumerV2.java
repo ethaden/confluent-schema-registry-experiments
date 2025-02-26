@@ -1,10 +1,14 @@
 package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav2;
 
 import java.lang.invoke.MethodHandles;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
 import java.util.Random;
+
+import org.apache.avro.Conversion;
+import org.apache.avro.specific.SpecificData;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.RecordDeserializationException;
@@ -33,15 +37,13 @@ public class ConsumerV2 {
         settings.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
         settings.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true");
         settings.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
-        settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
-        settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
+        settings.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
+        // Adding support for our custom AVRO logical type
+        settings.put(KafkaAvroSerializerConfig.AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG, true);
         // Always use the latest version of the schema from Schema Registry
-        settings.put("use.latest.version", true);
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
-        settings.put("use.latest.with.metadata", "application.major.version=2");
-        // Use the JSONata executor
-        settings.put("rule.executors", "executor1");
-        settings.put("rule.executors.executor1.class", "io.confluent.kafka.schemaregistry.rules.jsonata.JsonataExecutor");
+        //settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=2");
+        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_VERSION, true);
         return settings;
     }
 
@@ -49,6 +51,7 @@ public class ConsumerV2 {
         Random ran = new Random();
         String groupId = new String("Consumer-"+ran.nextInt(100000));
         LOGGER.info("Starting consumer with schema v2: "+groupId);
+
         try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings(groupId))) {
             // Subscribe to our topic
             LOGGER.info("Subscribing to topic " + KAFKA_TOPIC);
@@ -62,7 +65,9 @@ public class ConsumerV2 {
                         LOGGER.warn("Poll return {} records", count);
                     }
                     for (var record : records) {
-                        LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
+                        //LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
+                        SpecificMeasurement measurement = MeasurementConverter.fromAvro(record.value());
+                        System.out.println(measurement);
                     }
                 } catch (RecordDeserializationException re) {
                     long offset = re.offset();

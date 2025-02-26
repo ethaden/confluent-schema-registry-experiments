@@ -1,23 +1,27 @@
-package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav1;
+package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav2customlogicaltype;
 
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
-import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
-import models.avro.Measurement;
+import java.lang.invoke.MethodHandles;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
+import java.util.Random;
+
+import io.confluent.ethaden.examples.avro.fixedpointnumber.FixedPointNumberConversion;
+import org.apache.avro.Conversion;
+import org.apache.avro.specific.SpecificData;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
+import models.avro.Measurement;
 
-import java.lang.invoke.MethodHandles;
-import java.time.Duration;
-import java.util.List;
-import java.util.Properties;
-import java.util.Random;
-
-public class ConsumerV1 {
+public class ConsumerV2CustomLogicalType {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -35,16 +39,20 @@ public class ConsumerV1 {
         settings.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true");
         settings.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, "http://localhost:8081");
         settings.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
-        // Always use the latest version of the schema from Schema Registry
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
-        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=1");
+        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=2");
         return settings;
     }
 
     public static void main(String[] args) {
         Random ran = new Random();
         String groupId = new String("Consumer-"+ran.nextInt(100000));
-        LOGGER.info("Starting consumer with schema v1: "+groupId);
+        LOGGER.info("Starting consumer with schema v2: "+groupId);
+        // Workaround for custom logical type
+        //SpecificData.get().addLogicalTypeConversion(new FixedPointNumberConversion());
+        for (Conversion<?> c: SpecificData.get().getConversions()) {
+            System.out.println("Found conversion: "+((Object)c));
+        }
         try (KafkaConsumer<String, Measurement> consumer = new KafkaConsumer<>(settings(groupId))) {
             // Subscribe to our topic
             LOGGER.info("Subscribing to topic " + KAFKA_TOPIC);

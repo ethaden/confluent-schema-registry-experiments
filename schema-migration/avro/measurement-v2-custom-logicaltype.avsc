@@ -3,7 +3,11 @@
   "name": "Measurement",
   "fields": [
     {"name": "name", "type": "string"},
-    {"name": "value", "type": "string"},
+    {"name": "value", "type": {
+        "type": "string",
+        "logicalType": "fixedpointnumber"
+      }
+    },
     {"name": "unit", "type": "string"}
   ]
 }

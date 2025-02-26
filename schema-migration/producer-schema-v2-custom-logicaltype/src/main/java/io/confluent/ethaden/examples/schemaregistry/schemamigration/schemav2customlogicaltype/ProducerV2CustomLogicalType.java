@@ -1,4 +1,4 @@
-package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav2;
+package io.confluent.ethaden.examples.schemaregistry.schemamigration.schemav2customlogicaltype;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
@@ -28,7 +28,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.random.RandomGenerator;
 
-public class ProducerV2 {
+public class ProducerV2CustomLogicalType {
 
     private static final Logger LOGGER = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -59,7 +59,7 @@ public class ProducerV2 {
     }
     
     public static void main(String[] args) {
-        ProducerV2 produce = new ProducerV2();
+        ProducerV2CustomLogicalType produce = new ProducerV2CustomLogicalType();
         produce.sendAvroProducer(10);
     }
 
@@ -73,10 +73,12 @@ public class ProducerV2 {
                 BigDecimal randValue = new BigDecimal(rand.nextDouble(100));
                 BigDecimal valueWithTwoDecimals = randValue.setScale(2, RoundingMode.HALF_UP);
                 System.out.println("Sending decimal "+valueWithTwoDecimals);
-                SpecificMeasurement measurement = new SpecificMeasurement("This is message " + key,
-                    valueWithTwoDecimals, "°C");
-                Measurement avroMeasurement = MeasurementConverter.toAvro(measurement);
-                ProducerRecord<String, Measurement> producerRecord = new ProducerRecord<>(TOPIC, key, avroMeasurement);
+                Measurement value = Measurement.newBuilder()
+                        .setName("This is message " + key)
+                        .setValue(valueWithTwoDecimals)
+                        .setUnit("°C")
+                        .build();
+                ProducerRecord<String, Measurement> producerRecord = new ProducerRecord<>(TOPIC, key, value);
                 LOGGER.info("Sending message {}", count);
                 producer.send(producerRecord, (RecordMetadata recordMetadata, Exception exception) -> {
                     if (exception == null) {

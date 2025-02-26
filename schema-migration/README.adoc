@@ -186,7 +186,7 @@ export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
             "kind": "TRANSFORM",
             "type": "JSONATA",
             "mode": "UPGRADE",
-            "expr": "$merge([$, {'value': $string(Measurement.value)}])",
+            "expr": "$merge([$, {'value': $string(value)}])",
             "disabled": false
             },
             {
@@ -194,7 +194,7 @@ export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
             "kind": "TRANSFORM",
             "type": "JSONATA",
             "mode": "DOWNGRADE",
-            "expr": "$merge([$, {'value': $number(Measurement.value)}])",
+            "expr": "$merge([$, {'value': $number(value)}])",
             "disabled": false
             }
         ]
@@ -214,9 +214,8 @@ http://localhost:8081/subjects/measurements-value/versions
 Check if consumption works by restricting `kafka-avro-console-consumer` to the second application version:
 
 ```shell
-docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=2 --property rule.executors=executor1 --property rule.executors.executor1.class=io.confluent.kafka.schemaregistry.rules.jsonata.JsonataExecutor
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=2
 ```
-
 
 == Helpful tools
 
