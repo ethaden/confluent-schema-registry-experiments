@@ -33,7 +33,7 @@ export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
             "kind": "TRANSFORM",
             "type": "JSONATA",
             "mode": "UPGRADE",
-            "expr": "$merge([$, {'value': $string(Measurement.value)}])",
+            "expr": "$merge([$, {'value': $string(value)}])",
             "disabled": false
             },
             {
@@ -41,7 +41,7 @@ export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
             "kind": "TRANSFORM",
             "type": "JSONATA",
             "mode": "DOWNGRADE",
-            "expr": "$merge([$, {'value': $number(Measurement.value)}])",
+            "expr": "$merge([$, {'value': $number(value)}])",
             "disabled": false
             }
         ]

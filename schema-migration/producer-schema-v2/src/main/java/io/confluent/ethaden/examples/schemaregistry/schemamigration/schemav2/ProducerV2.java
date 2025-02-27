@@ -45,7 +45,7 @@ public class ProducerV2 {
         settings.put(KafkaAvroSerializerConfig.AUTO_REGISTER_SCHEMAS, false);
         settings.put(KafkaAvroSerializerConfig.AVRO_REMOVE_JAVA_PROPS_CONFIG, true);
         // Always use the latest version of the schema from Schema Registry
-        settings.put("use.latest.version", true);
+        //settings.put("use.latest.version", true);
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
         settings.put("use.latest.with.metadata", "application.major.version=2");
         settings.put(ProducerConfig.BATCH_SIZE_CONFIG, 1);

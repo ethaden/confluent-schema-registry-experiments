@@ -42,8 +42,7 @@ public class ConsumerV2 {
         settings.put(KafkaAvroSerializerConfig.AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG, true);
         // Always use the latest version of the schema from Schema Registry
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
-        //settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=2");
-        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_VERSION, true);
+        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=2");
         return settings;
     }
 
