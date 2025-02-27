@@ -64,7 +64,7 @@ public class ConsumerV2 {
                         LOGGER.warn("Poll return {} records", count);
                     }
                     for (var record : records) {
-                        //LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
+                        LOGGER.warn("Fetch record key={} value={}", record.key(), record.value());
                         SpecificMeasurement measurement = MeasurementConverter.fromAvro(record.value());
                         System.out.println(measurement);
                     }

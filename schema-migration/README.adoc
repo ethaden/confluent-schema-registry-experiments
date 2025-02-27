@@ -112,7 +112,7 @@ curl -X POST -H "Content-Type: application/vnd.schemaregistry.v1+json" \
 http://localhost:8081/subjects/measurements-value/versions
 ```
 
-Run a producer using the new schema, this time using our new custom Avro logical type `fixedpointnumber`:
+Run a producer using the new schema, this time using a new schema where values are encoded as `string`:
 
 ```shell
 ./gradlew -p producer-schema-v2 run
@@ -124,7 +124,7 @@ Use the console consumer to show the values:
 docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://schema-registry:8081 --topic measurements --from-beginning
 ```
 
-As you can see, the primitive type used to encode the decimal number is `string`. Thus, we eliminated issues with the precision of the values, rouding, etc. However, this data type requires more more and cannot be used without conversions.
+By encoding the decimal number as a `string` we eliminated issues with the precision of the values, rouding, etc. Your code needs to convert the string to other data types if required.
 
 Now the topic should contain a mix of messages with Version 1 and Version 2 of the schema.
 Try to consume the again with both the consumer knowing only Version 1 of the schema and the consumer knowing Version 2:
@@ -216,6 +216,37 @@ Check if consumption works by restricting `kafka-avro-console-consumer` to the s
 ```shell
 docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=2
 ```
+
+Now try both the old consumer (using `application.major.version=1`) and the new consumer (using `application.major.version=2`). Both will work now, utilizing the downgrade and upgrade rules specified along with the schema.
+
+Run the old consumer:
+
+```shell
+./gradlew -p consumer-schema-v1 run
+```
+
+Run the new consumer (you can also run both in parallel using a separate terminal):
+
+```shell
+./gradlew -p consumer-schema-v2 run
+```
+
+Note that the old consumers shows all `value` fields as double, while the new one shows them as `string`.
+
+
+=== Custom Logical Types in AVRO
+
+Avro has the capability to use so-called logical types. Each logical type uses a primitive type for encoding the actual value, e.g. `string`.
+You can implement your own custom logical types and use them for generating code from AVRO schemas as well as for the necessary conversions at runtime. Please have a look at
+* `buildSrc` for the necessary extensions to gradle
+* `avrofixedpointnumber` which is the same implementation as in the gradle subfolder but packaged to be used at runtime by the generated schemas. The generated schemas will register the logical type and the conversion automatically
+* `producer-schema-v2-custom-logicaltype` for an example how to produe with the custom logical type
+* `consumer-schema-v2-custom-logicaltype` for an example how to consume data using the custom logical type
+
+Unfortunately, the AVRO code for serializing/deserializing schemas does not support custom logical types in the moment.
+As a consequence is currently not possible to follow this approach if you want to utilize schema registry and the concepts regarding application major versions described above.
+
+Recommendation: Implement seperate classes for business objects and data transfer objects as shown in the producer and consumer for schema Version 2 and provide your own type conversion code. This will work in all programming languages, too.
 
 == Helpful tools
 
