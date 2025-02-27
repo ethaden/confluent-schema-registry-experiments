@@ -151,29 +151,29 @@ The following JSOnata string takes inputs such as the following (you can use htt
 
 ```json
 {
-  "Measurement": {
-    "name": "Temperature",
-    "value": 22.53,
-    "unit": "°C"
-  }
+"name": "Temperature",
+"value": 22.53,
+"unit": "°C"
 }
 ```
 
 Upgrading the value from float/double to string can be done with this expression (works only for flat data strcutures as the example above):
 
 ```json
-$merge([$, {'value': $string(Measurement.value)}])
+$merge([$, {'value': $string(value)}])
 ```
+
+Hot does it work? The `$merge` operator takes a list as input, then walks through it from beginning to end and puts all key-value pairs in the list members into one large record.
+Here the whole record is put as first list element denoted by `$`. Then we provide a second record with just one key-value pair. The `value` field ist set to a stringified version of the original value and will then replace the original value when being merged.
 
 Downgrading the value from string to float would be done by this expression:
 
 ```json
-$merge([$, {'value': $number(Measurement.value)}])
+$merge([$, {'value': $number(value)}])
 ```
 
 
 Let's assemble the migration rules now. They look like this:
-
 
 ```shell
 export MEASUREMENT2_SCHEMA_RAW=$(cat << 'eof'
@@ -217,6 +217,24 @@ Check if consumption works by restricting `kafka-avro-console-consumer` to the s
 docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=2
 ```
 
+This will work as expected. Let's test the downgrade capability by reading the data using the old application major version
+```shell
+docker compose exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --property schema.registry.url=http://localhost:8081 --topic measurements --from-beginning --property print.schema.ids=true --property use.latest.with.metadata=application.major.version=1
+```
+
+If you followed the whole manual step-by-step, you will now see errors. The reaons is simple: We produced the messages in the new format before we added the migration rules.
+When we added the rules, we created a new version of the schema automatically.
+But when the existing messages with schema Version 2 are read with the `use.latest.with.metadata=application.major.version=1` the consumer won't use the V2 with the migration rules,
+but instead the original V2 which does not have these rules. Therefore, no migration takes place and we see the error.
+
+We can validate this by producting additional V2 messages:
+
+```shell
+./gradlew -p consumer-schema-v2 run
+```
+
+Here, the producer will already the latest version of schema V2, which has migration rules. When reading these messages with the `kafka-avro-console-consumer` command above, everything works as expected.
+
 Now try both the old consumer (using `application.major.version=1`) and the new consumer (using `application.major.version=2`). Both will work now, utilizing the downgrade and upgrade rules specified along with the schema.
 
 Run the old consumer:
@@ -224,6 +242,8 @@ Run the old consumer:
 ```shell
 ./gradlew -p consumer-schema-v1 run
 ```
+
+Again, the consumer will fail to read the messages with the first schema V2 (where the migration rules are missing). But the one produced later-on will be transformed properly.
 
 Run the new consumer (you can also run both in parallel using a separate terminal):
 

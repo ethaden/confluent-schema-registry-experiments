@@ -38,6 +38,8 @@ public class ConsumerV1 {
         // Always use the latest version of the schema from Schema Registry
         // But use only schema versions where the metadata field "application.major.version" is equal to "2"
         settings.put(KafkaAvroDeserializerConfig.USE_LATEST_WITH_METADATA, "application.major.version=1");
+        // Additionally, use the latest version
+        settings.put(KafkaAvroDeserializerConfig.USE_LATEST_VERSION, true);
         return settings;
     }
 
