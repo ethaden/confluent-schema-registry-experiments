@@ -44,6 +44,10 @@ Afterwords, you can consume with either the old or the new consumer implementati
 
 ==== Automatic setup with target type decimal
 
+Note: This is just an experiment which shows that JSONata is NOT capable of working with the AVRO logical Type `Decimal` because it is encoded as `bytes`.
+The idea of this experiment was to exploit the way AVRO stores decimals (big-endian, two's complement integer) and convert to and from this representation.
+Conclusion: This is NOT possible in the moment.
+
 ```shell
 ./automatic-setup-decimal.sh
 ```
@@ -78,7 +82,6 @@ Converting back to a double is just the reverse operation (no rounding or modulo
 ++++
 x / 10^s
 ++++
-
 
 === Manual setup with explanations of the steps (only for target type string)
 
