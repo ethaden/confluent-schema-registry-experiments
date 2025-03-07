@@ -16,11 +16,72 @@ gradle wrapper
 
 == Running the code
 
-First, start the docker environment:
+First, start the docker environment (in the main folder):
 
 ```shell
 docker compose up -d
 ```
+
+=== Automatic setup
+
+==== Automatic setup with target type string
+
+In the `schema-migration` folder, run the script 
+
+```shell
+./automatic-setup-string.sh
+```
+
+Afterwords, you can consume with either the old or the new consumer implementation, each using the appropriate upgrade and downgrade migration rules:
+
+```shell
+./gradlew -p consumer-schema-v1 run
+```
+
+```shell
+./gradlew -p consumer-schema-v2 run
+```
+
+==== Automatic setup with target type decimal
+
+```shell
+./automatic-setup-decimal.sh
+```
+
+Afterwords, you can consume with either the old or the new consumer implementation, each using the appropriate upgrade and downgrade migration rules:
+
+```shell
+./gradlew -p consumer-schema-v1 run
+```
+
+```shell
+./gradlew -p consumer-schema-v2-decimal run
+```
+
+Note, that we use the same code for the consumer with Schema v1, but have a different downgrade migration rule.
+
+As the migration language (and library) JSONanta does not understand understand the AVRO logical type `decimal`, we use a trick here:
+We know both the precision (total number of digits, here: 4) and the scale (number of decimal places, here: 2) as these have been defined in the schema. We also know how AVRO represents decimals: As bigendian two-complement integers.
+
+In the migration rules, we exploit this knowledge and use the following formular for converting our doubles to decimals:
+
+[stem] 
+++++
+d = round((10^s)*x)%(10^p)
+++++
+
+where d is our decimal, `x` is a double, `s` is the scale (number of decimal places), `p` is the precision (total number of digits), `round` rounds to the nearest integer. The module `%` has to be calculated to ensure that the total number of digits meets the specified number
+
+Converting back to a double is just the reverse operation (no rounding or modulo operation required):
+
+[stem] 
+++++
+x / 10^s
+++++
+
+
+=== Manual setup with explanations of the steps (only for target type string)
+
 Create a new topic:
 
 ```shell
@@ -143,7 +204,7 @@ Both consumer will only be able to deserialize the messages which are in the for
 
 
 
-=== Schema Migration Rules
+==== Schema Migration Rules
 
 Let's configure Schema Migration Rule.s Note that the dependency `io.confluent:kafka-schema-rules` has been added to all Kafka clients already in the build environment. Migration rules are written in JSonata and uploaded to Schema Registry. Thus, we need to extend the existing schemas.
 
@@ -253,6 +314,7 @@ Run the new consumer (you can also run both in parallel using a separate termina
 
 Note that the old consumers shows all `value` fields as double, while the new one shows them as `string`.
 
+Key takeaway: Make sure that you add the migration rules already to the first schema in your new application major version, before you start producing messages with that updated format. Otherwise, downgrade won't work.
 
 === Custom Logical Types in AVRO
 

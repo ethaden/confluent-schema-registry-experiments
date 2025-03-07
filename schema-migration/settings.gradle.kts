@@ -6,5 +6,7 @@ include("avrofixedpointnumber",
     "producer-schema-v2",
     "consumer-schema-v2",
     "producer-schema-v2-custom-logicaltype",
-    "consumer-schema-v2-custom-logicaltype"
+    "consumer-schema-v2-custom-logicaltype",
+    "producer-schema-v2-decimal",
+    "consumer-schema-v2-decimal"
 )
